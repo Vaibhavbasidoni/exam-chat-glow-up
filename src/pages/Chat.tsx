@@ -7,8 +7,35 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 
+interface BaseMessage {
+  id: number;
+  type: string;
+  content: string;
+  timestamp: string;
+}
+
+interface QuestionMessage extends BaseMessage {
+  type: 'question';
+  options?: string[];
+  marks: number;
+  questionNumber: string;
+}
+
+interface AnswerMessage extends BaseMessage {
+  type: 'answer';
+  image?: string;
+}
+
+interface FeedbackMessage extends BaseMessage {
+  type: 'feedback';
+  marks: { allocated: number; awarded: number };
+  improvement?: string;
+}
+
+type Message = QuestionMessage | AnswerMessage | FeedbackMessage;
+
 const Chat = () => {
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: 'question',
@@ -43,16 +70,16 @@ const Chat = () => {
   ]);
   
   const [currentAnswer, setCurrentAnswer] = useState('');
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const handleSendAnswer = () => {
     if (currentAnswer.trim()) {
-      const newMessage = {
+      const newMessage: AnswerMessage = {
         id: messages.length + 1,
         type: 'answer',
         content: currentAnswer,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        image: selectedImage
+        image: selectedImage || undefined
       };
       setMessages([...messages, newMessage]);
       setCurrentAnswer('');
@@ -60,7 +87,7 @@ const Chat = () => {
       
       // Simulate feedback after 2 seconds
       setTimeout(() => {
-        const feedbackMessage = {
+        const feedbackMessage: FeedbackMessage = {
           id: messages.length + 2,
           type: 'feedback',
           content: 'Your answer demonstrates good understanding of the topic.',
@@ -73,12 +100,12 @@ const Chat = () => {
     }
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files[0];
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setSelectedImage(e.target.result);
+        setSelectedImage(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -135,15 +162,15 @@ const Chat = () => {
                           <span className="text-white text-xs font-bold">Q</span>
                         </div>
                         <span className="font-bold text-blue-800">
-                          ({message.questionNumber}) ({message.marks} mark)
+                          ({(message as QuestionMessage).questionNumber}) ({(message as QuestionMessage).marks} mark)
                         </span>
                       </div>
                       <p className="text-slate-800 leading-relaxed">{message.content}</p>
                     </div>
                     
-                    {message.options && (
+                    {(message as QuestionMessage).options && (
                       <div className="space-y-3">
-                        {message.options.map((option, optIndex) => (
+                        {(message as QuestionMessage).options!.map((option, optIndex) => (
                           <div key={optIndex} className="flex items-start gap-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
                             <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
                             <span className="text-slate-700">{option}</span>
@@ -160,9 +187,9 @@ const Chat = () => {
                   <div className="max-w-xs">
                     <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 rounded-2xl rounded-br-md shadow-lg">
                       <p className="text-sm leading-relaxed">{message.content}</p>
-                      {message.image && (
+                      {(message as AnswerMessage).image && (
                         <div className="mt-3 rounded-lg overflow-hidden">
-                          <img src={message.image} alt="Uploaded answer" className="w-full h-auto" />
+                          <img src={(message as AnswerMessage).image} alt="Uploaded answer" className="w-full h-auto" />
                         </div>
                       )}
                     </div>
@@ -184,7 +211,7 @@ const Chat = () => {
                           <div className="flex items-center gap-1">
                             <Target className="h-4 w-4 text-green-600" />
                             <span className="text-green-700">
-                              {message.marks.awarded}/{message.marks.allocated} marks
+                              {(message as FeedbackMessage).marks.awarded}/{(message as FeedbackMessage).marks.allocated} marks
                             </span>
                           </div>
                         </div>
@@ -196,13 +223,13 @@ const Chat = () => {
                         <p className="text-slate-700 text-sm leading-relaxed">{message.content}</p>
                       </div>
                       
-                      {message.improvement && (
+                      {(message as FeedbackMessage).improvement && (
                         <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border-l-4 border-amber-400">
                           <div className="flex items-start gap-2">
                             <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                             <div>
                               <h5 className="font-medium text-amber-800 text-sm">Improvement Suggestion</h5>
-                              <p className="text-amber-700 text-sm mt-1">{message.improvement}</p>
+                              <p className="text-amber-700 text-sm mt-1">{(message as FeedbackMessage).improvement}</p>
                             </div>
                           </div>
                         </div>
