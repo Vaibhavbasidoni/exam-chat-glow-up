@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { ArrowRight, Bell, Camera, CheckCircle, XCircle, FileText, Target, Lightbulb } from 'lucide-react';
+import { ArrowRight, Bell, Camera, CheckCircle, FileText, Target, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,7 @@ interface FeedbackMessage extends BaseMessage {
   type: 'feedback';
   marks: { allocated: number; awarded: number };
   improvement?: string;
+  questionNumber: string;
 }
 
 type Message = QuestionMessage | AnswerMessage | FeedbackMessage;
@@ -43,7 +44,7 @@ const Chat = () => {
       options: ['a. new snow or rain', 'b. heavy winds', 'c. high altitude', 'd. global warming'],
       timestamp: '2:55 PM',
       marks: 1,
-      questionNumber: 'i'
+      questionNumber: '1'
     },
     {
       id: 2,
@@ -57,7 +58,8 @@ const Chat = () => {
       content: 'Your answer correctly identifies the reasons for avalanche formation based on the passage.',
       marks: { allocated: 1, awarded: 1 },
       improvement: 'Well done!',
-      timestamp: '2:56 PM'
+      timestamp: '2:56 PM',
+      questionNumber: '1'
     },
     {
       id: 4,
@@ -65,19 +67,39 @@ const Chat = () => {
       content: 'Comment on warning signs exist which allow experts to predict avalanches in two sentences.',
       timestamp: '2:57 PM',
       marks: 1,
-      questionNumber: 'ii'
+      questionNumber: '2'
     }
   ]);
   
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(1);
+
+  const dummyQuestions = [
+    {
+      content: 'Explain the role of temperature in avalanche formation.',
+      marks: 2,
+      type: 'open'
+    },
+    {
+      content: 'What safety measures should mountaineers take to avoid avalanches?',
+      marks: 3,
+      type: 'open'
+    },
+    {
+      content: 'Choose the correct statement about snow layers:',
+      options: ['a. All snow layers are equally stable', 'b. Weak layers can trigger avalanches', 'c. Temperature has no effect on snow stability', 'd. Wind cannot affect avalanche formation'],
+      marks: 1,
+      type: 'mcq'
+    }
+  ];
 
   const handleSendAnswer = () => {
-    if (currentAnswer.trim()) {
+    if (currentAnswer.trim() || selectedImage) {
       const newMessage: AnswerMessage = {
         id: messages.length + 1,
         type: 'answer',
-        content: currentAnswer,
+        content: currentAnswer || 'Image uploaded',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         image: selectedImage || undefined
       };
@@ -93,9 +115,28 @@ const Chat = () => {
           content: 'Your answer demonstrates good understanding of the topic.',
           marks: { allocated: 1, awarded: 1 },
           improvement: 'Consider adding more specific examples to strengthen your response.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          questionNumber: currentQuestionIndex.toString()
         };
         setMessages(prev => [...prev, feedbackMessage]);
+        
+        // Add next question after feedback
+        setTimeout(() => {
+          if (currentQuestionIndex - 1 < dummyQuestions.length) {
+            const nextQuestion = dummyQuestions[currentQuestionIndex - 1];
+            const questionMessage: QuestionMessage = {
+              id: messages.length + 3,
+              type: 'question',
+              content: nextQuestion.content,
+              options: nextQuestion.options,
+              marks: nextQuestion.marks,
+              questionNumber: (currentQuestionIndex + 1).toString(),
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, questionMessage]);
+            setCurrentQuestionIndex(prev => prev + 1);
+          }
+        }, 1000);
       }, 2000);
     }
   };
@@ -105,7 +146,53 @@ const Chat = () => {
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
+        const imageUrl = e.target?.result as string;
+        setSelectedImage(imageUrl);
+        
+        // Auto-send when image is selected
+        const newMessage: AnswerMessage = {
+          id: messages.length + 1,
+          type: 'answer',
+          content: 'Image uploaded',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          image: imageUrl
+        };
+        setMessages(prev => [...prev, newMessage]);
+        
+        // Reset image selection
+        setSelectedImage(null);
+        
+        // Simulate feedback
+        setTimeout(() => {
+          const feedbackMessage: FeedbackMessage = {
+            id: messages.length + 2,
+            type: 'feedback',
+            content: 'Your handwritten answer shows good effort and understanding.',
+            marks: { allocated: 1, awarded: 1 },
+            improvement: 'Well done! Your handwriting is clear and organized.',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            questionNumber: currentQuestionIndex.toString()
+          };
+          setMessages(prev => [...prev, feedbackMessage]);
+          
+          // Add next question
+          setTimeout(() => {
+            if (currentQuestionIndex - 1 < dummyQuestions.length) {
+              const nextQuestion = dummyQuestions[currentQuestionIndex - 1];
+              const questionMessage: QuestionMessage = {
+                id: messages.length + 3,
+                type: 'question',
+                content: nextQuestion.content,
+                options: nextQuestion.options,
+                marks: nextQuestion.marks,
+                questionNumber: (currentQuestionIndex + 1).toString(),
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              };
+              setMessages(prev => [...prev, questionMessage]);
+              setCurrentQuestionIndex(prev => prev + 1);
+            }
+          }, 1000);
+        }, 2000);
       };
       reader.readAsDataURL(file);
     }
@@ -121,7 +208,7 @@ const Chat = () => {
               <ArrowRight className="h-4 w-4 rotate-180 text-blue-600" />
             </Button>
             <h1 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              2023 Set 1
+              2024 Set 2
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -154,14 +241,14 @@ const Chat = () => {
           {messages.map((message, index) => (
             <div key={message.id} className="space-y-4 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
               {message.type === 'question' && (
-                <Card className="bg-white/90 backdrop-blur-sm border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale">
+                <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale" style={{ borderLeft: '4px solid #3F2768' }}>
                   <CardContent className="p-5">
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#3F2768' }}>
                           <span className="text-white text-xs font-bold">Q</span>
                         </div>
-                        <span className="font-bold text-blue-800">
+                        <span className="font-bold" style={{ color: '#3F2768' }}>
                           ({(message as QuestionMessage).questionNumber}) ({(message as QuestionMessage).marks} mark)
                         </span>
                       </div>
@@ -171,8 +258,8 @@ const Chat = () => {
                     {(message as QuestionMessage).options && (
                       <div className="space-y-3">
                         {(message as QuestionMessage).options!.map((option, optIndex) => (
-                          <div key={optIndex} className="flex items-start gap-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                          <div key={optIndex} className="flex items-start gap-3 p-2 rounded-lg hover:bg-purple-50 transition-colors">
+                            <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#3F2768' }}></div>
                             <span className="text-slate-700">{option}</span>
                           </div>
                         ))}
@@ -201,20 +288,34 @@ const Chat = () => {
               {message.type === 'feedback' && (
                 <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg animate-scale-in">
                   <CardContent className="p-5">
+                    {/* Question Number and Marks Header */}
+                    <div className="bg-white/60 rounded-lg p-3 mb-4 border-l-4 border-green-400">
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="font-semibold text-slate-700">Question Number:</span>
+                          <span className="ml-2 text-slate-800">{(message as FeedbackMessage).questionNumber}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-700">Marks Allocated:</span>
+                          <span className="ml-2 text-slate-800">{(message as FeedbackMessage).marks.allocated}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-700">Marks Awarded:</span>
+                          <span className="ml-2 text-green-700 font-bold">{(message as FeedbackMessage).marks.awarded}</span>
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-700">Student Answer:</span>
+                          <span className="ml-2 text-slate-800">Completed</span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="flex items-start gap-3 mb-4">
                       <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
                         <CheckCircle className="h-5 w-5 text-white" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-bold text-green-800 mb-1">Feedback</h4>
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Target className="h-4 w-4 text-green-600" />
-                            <span className="text-green-700">
-                              {(message as FeedbackMessage).marks.awarded}/{(message as FeedbackMessage).marks.allocated} marks
-                            </span>
-                          </div>
-                        </div>
+                        <h4 className="font-bold text-green-800 mb-1">Feedback:</h4>
                       </div>
                     </div>
                     
@@ -228,7 +329,7 @@ const Chat = () => {
                           <div className="flex items-start gap-2">
                             <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
                             <div>
-                              <h5 className="font-medium text-amber-800 text-sm">Improvement Suggestion</h5>
+                              <h5 className="font-medium text-amber-800 text-sm">Improvement Suggestion:</h5>
                               <p className="text-amber-700 text-sm mt-1">{(message as FeedbackMessage).improvement}</p>
                             </div>
                           </div>
@@ -248,27 +349,15 @@ const Chat = () => {
       {/* Input Area */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-slate-200 p-4">
         <div className="max-w-md mx-auto space-y-3">
-          {selectedImage && (
-            <div className="relative">
-              <img src={selectedImage} alt="Selected" className="w-full h-32 object-cover rounded-lg" />
-              <Button
-                variant="destructive"
-                size="sm"
-                className="absolute top-2 right-2"
-                onClick={() => setSelectedImage(null)}
-              >
-                <XCircle className="h-4 w-4" />
-              </Button>
-            </div>
+          {!selectedImage && (
+            <Textarea
+              value={currentAnswer}
+              onChange={(e) => setCurrentAnswer(e.target.value)}
+              placeholder="Type your answer here..."
+              className="min-h-[60px] border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none"
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAnswer()}
+            />
           )}
-          
-          <Textarea
-            value={currentAnswer}
-            onChange={(e) => setCurrentAnswer(e.target.value)}
-            placeholder="Type your answer here..."
-            className="min-h-[60px] border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none"
-            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAnswer()}
-          />
           
           <div className="flex items-center gap-3">
             <input
@@ -291,14 +380,16 @@ const Chat = () => {
             
             <div className="flex-1" />
             
-            <Button 
-              onClick={handleSendAnswer}
-              className="h-10 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-200"
-              disabled={!currentAnswer.trim()}
-            >
-              <span className="mr-2">Send</span>
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            {!selectedImage && (
+              <Button 
+                onClick={handleSendAnswer}
+                className="h-10 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-200"
+                disabled={!currentAnswer.trim()}
+              >
+                <span className="mr-2">Send</span>
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>
