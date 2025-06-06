@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -493,38 +494,60 @@ const Chat = () => {
                       ))}
                     </div>
 
-                    {/* toggle for improvement tips */}
-                    <button
-                      onClick={() => setShowImprovements((prev) => !prev)}
-                      className="mb-2 text-xs text-[#3F2768] font-semibold"
-                    >
-                      {showImprovements ? (
-                        <span className="flex items-center gap-1">
-                          <span>Hide Tips</span> ⬆️
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1">
-                          <span>Show Tips</span> ⬇️
-                        </span>
-                      )}
-                    </button>
+                    <p className="text-xs text-[#3F2768] mt-3 text-right font-medium">{message.timestamp}</p>
+                  </CardContent>
+                </Card>
 
-                    {/* improvement tips section */}
+                {/* Enhanced Improvement Tips Card */}
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 shadow-xl">
+                  <CardContent className="p-5">
+                    {/* Header with interactive toggle */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                        <Lightbulb className="h-5 w-5 text-white" />
+                      </div>
+                      <h4 className="font-bold text-amber-800 text-lg">Improvement Tips</h4>
+                      <button
+                        onClick={() => setShowImprovements((prev) => !prev)}
+                        className="ml-auto text-amber-700 font-semibold text-sm bg-amber-100 px-3 py-1 rounded-full border border-amber-300 transition-all duration-200"
+                      >
+                        {showImprovements ? (
+                          <span className="flex items-center gap-1">
+                            <span>Hide</span> ⬆️
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <span>Show</span> ⬇️
+                          </span>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Improvement tips content with smooth animation */}
                     <div
-                      className={`p-3 bg-[#F5F3FA] rounded-lg border-l-4 border-[#B0A6C9] overflow-hidden transition-all duration-500 whitespace-pre-line ${
+                      className={`overflow-hidden transition-all duration-500 ${
                         showImprovements ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
                       }`}
                     >
-                      <div className="flex items-start gap-2">
-                        <Lightbulb className="h-6 w-6 text-[#3F2768] mt-0.5" />
-                        <div>
-                          <h5 className="font-bold text-[#3F2768] text-sm mb-1">Improvement Tips:</h5>
-                          <p className="text-[#5A4E75] text-sm font-medium">{message.combinedImprovements}</p>
-                        </div>
+                      <div className="space-y-3">
+                        {message.combinedImprovements.split('\n\n').map((tip, tipIdx) => (
+                          <div
+                            key={tipIdx}
+                            className="bg-white/70 rounded-lg p-3 border-l-4 border-amber-400 shadow-inner"
+                            style={{ animationDelay: `${tipIdx * 0.1}s` }}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Hash className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                              <div>
+                                <span className="text-amber-800 text-sm font-medium">{tip}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
 
-                    <p className="text-xs text-[#3F2768] mt-3 text-right font-medium">{message.timestamp}</p>
+                    <p className="text-xs text-amber-700 mt-3 text-right font-medium">{message.timestamp}</p>
                   </CardContent>
                 </Card>
 
