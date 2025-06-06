@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -10,6 +8,11 @@ import {
   Loader2,
   Bot,
   Lightbulb,
+  Hash,
+  Award,
+  Target,
+  User,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -294,7 +297,6 @@ const Chat = () => {
   };
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
     setCopyFeedback('✅');
     setTimeout(() => setCopyFeedback('📋'), 2000);
   };
@@ -455,26 +457,37 @@ const Chat = () => {
                           className="bg-white/70 rounded-lg p-3 border-l-4 border-[#3F2768] shadow-inner"
                           style={{ animationDelay: `${fbIdx * 0.1}s` }}
                         >
-                          <p className="text-[#3F2768] text-sm font-semibold">Question {fb.questionNumber}</p>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Hash className="h-4 w-4 text-[#3F2768]" />
+                            <p className="text-[#3F2768] text-sm font-semibold">Question {fb.questionNumber}</p>
+                          </div>
                           <div className="flex justify-between mt-1">
-                            <span>
+                            <span className="flex items-center gap-1">
+                              <Award className="h-3 w-3 text-[#3F2768]" />
                               <span className="text-[#3F2768] text-xs font-bold">Marks Awarded:</span>{' '}
                               <span className={`text-xs font-semibold ${fb.awarded === fb.allocated ? 'text-[#28A745]' : 'text-[#D0342C]'}`}>
                                 {fb.awarded}
                               </span>
                             </span>
-                            <span>
+                            <span className="flex items-center gap-1">
+                              <Target className="h-3 w-3 text-[#28A745]" />
                               <span className="text-[#28A745] text-xs font-bold">Marks Allocated:</span>{' '}
                               <span className="text-[#3F2768] text-xs">{fb.allocated}</span>
                             </span>
                           </div>
-                          <div className="mt-2">
-                            <span className="text-[#3F2768] text-sm font-bold">Student Answer:</span>{' '}
-                            <span className="text-[#3F2768] text-sm">{fb.studentAnswer}</span>
+                          <div className="mt-2 flex items-start gap-2">
+                            <User className="h-4 w-4 text-[#3F2768] mt-0.5 flex-shrink-0" />
+                            <div>
+                              <span className="text-[#3F2768] text-sm font-bold">Student Answer:</span>{' '}
+                              <span className="text-[#3F2768] text-sm">{fb.studentAnswer}</span>
+                            </div>
                           </div>
-                          <div className="mt-2">
-                            <span className="text-[#3F2768] text-sm font-bold">Feedback:</span>{' '}
-                            <span className="text-[#3F2768] text-sm" dangerouslySetInnerHTML={{ __html: fb.feedbackText }} />
+                          <div className="mt-2 flex items-start gap-2">
+                            <MessageCircle className="h-4 w-4 text-[#3F2768] mt-0.5 flex-shrink-0" />
+                            <div>
+                              <span className="text-[#3F2768] text-sm font-bold">Feedback:</span>{' '}
+                              <span className="text-[#3F2768] text-sm" dangerouslySetInnerHTML={{ __html: fb.feedbackText }} />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -614,4 +627,3 @@ const Chat = () => {
 };
 
 export default Chat;
-
