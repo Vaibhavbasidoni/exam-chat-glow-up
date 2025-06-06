@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -499,17 +498,17 @@ const Chat = () => {
                 </Card>
 
                 {/* Enhanced Improvement Tips Card */}
-                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200 shadow-xl">
+                <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-xl">
                   <CardContent className="p-5">
                     {/* Header with interactive toggle */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-[#3F2768] rounded-full flex items-center justify-center">
                         <Lightbulb className="h-5 w-5 text-white" />
                       </div>
-                      <h4 className="font-bold text-amber-800 text-lg">Improvement Tips</h4>
+                      <h4 className="font-bold text-[#3F2768] text-lg">Improvement Tips</h4>
                       <button
                         onClick={() => setShowImprovements((prev) => !prev)}
-                        className="ml-auto text-amber-700 font-semibold text-sm bg-amber-100 px-3 py-1 rounded-full border border-amber-300 transition-all duration-200"
+                        className="ml-auto text-[#3F2768] font-semibold text-sm bg-purple-100 px-3 py-1 rounded-full border border-purple-300 transition-all duration-200"
                       >
                         {showImprovements ? (
                           <span className="flex items-center gap-1">
@@ -533,13 +532,13 @@ const Chat = () => {
                         {message.combinedImprovements.split('\n\n').map((tip, tipIdx) => (
                           <div
                             key={tipIdx}
-                            className="bg-white/70 rounded-lg p-3 border-l-4 border-amber-400 shadow-inner"
+                            className="bg-white/70 rounded-lg p-3 border-l-4 border-[#3F2768] shadow-inner"
                             style={{ animationDelay: `${tipIdx * 0.1}s` }}
                           >
                             <div className="flex items-start gap-2">
-                              <Hash className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                              <Hash className="h-4 w-4 text-[#3F2768] mt-0.5 flex-shrink-0" />
                               <div>
-                                <span className="text-amber-800 text-sm font-medium">{tip}</span>
+                                <span className="text-[#3F2768] text-sm font-medium">{tip}</span>
                               </div>
                             </div>
                           </div>
@@ -547,7 +546,7 @@ const Chat = () => {
                       </div>
                     </div>
 
-                    <p className="text-xs text-amber-700 mt-3 text-right font-medium">{message.timestamp}</p>
+                    <p className="text-xs text-[#3F2768] mt-3 text-right font-medium">{message.timestamp}</p>
                   </CardContent>
                 </Card>
 
