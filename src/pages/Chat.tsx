@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -104,6 +105,27 @@ Instruction: Read the following passage carefully:
 
 Below are sub-questions (i)–(iv) based on this passage:`,
   },
+  {
+    questionNumber: '3',
+    marks: 12,
+    subQuestions: [
+      '(i) Solve the equation: 2x + 5 = 17',
+      '(ii) Find the area of a rectangle with length 8 cm and width 5 cm.',
+      '(iii) Calculate: (3 + 4) × 2 - 6',
+      '(iv) What is 25% of 80?',
+      '(v) Convert 3.5 hours into minutes.',
+      '(vi) If a triangle has angles of 60° and 70°, what is the third angle?',
+    ],
+    content: `📖 Section A — Question 3  
+✏️ Type: Mathematics  
+🎯 Marks: 12  
+
+Instruction: Solve the following mathematical problems:  
+
+Show your working clearly for each calculation.  
+
+Below are sub-questions (i)–(vi) to solve:`,
+  },
 ];
 
 const Chat = () => {
@@ -113,7 +135,6 @@ const Chat = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showImprovements, setShowImprovements] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState('📋');
-  const [isImageHovered, setIsImageHovered] = useState(false);
   const [currentProgress, setCurrentProgress] = useState(0);
 
   useEffect(() => {
@@ -145,6 +166,8 @@ const Chat = () => {
       setSelectedImage(imageUrl);
     };
     reader.readAsDataURL(file);
+    // Reset the input value to allow re-uploading the same file or different files
+    event.target.value = '';
   };
 
   const handleSendAnswer = () => {
@@ -276,17 +299,23 @@ const Chat = () => {
     setTimeout(() => setCopyFeedback('📋'), 2000);
   };
 
+  // Check if we should show the Next button - only after feedback with summary is shown
+  const shouldShowNextButton = () => {
+    const lastFeedback = messages.filter(m => m.type === 'feedback').pop();
+    return lastFeedback && messages.some(m => m.type === 'feedback');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 font-inter">
-      {/* Enhanced Header */}
+      {/* Header */}
       <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100 hover:scale-110 transition-all duration-200">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
               <ArrowRight className="h-4 w-4 rotate-180 text-blue-600" />
             </Button>
             <div className="text-center">
-              <h1 className="text-lg font-bold text-[#3F2768] animate-pulse">2024 Set 2</h1>
+              <h1 className="text-lg font-bold text-[#3F2768]">2024 Set 2</h1>
               <p className="text-sm text-slate-600 font-medium">Math Test</p>
               {/* Progress Bar */}
               <div className="w-20 h-1 bg-slate-200 rounded-full mt-1 overflow-hidden">
@@ -298,47 +327,49 @@ const Chat = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100 hover:scale-110 transition-all duration-200 relative">
+            <Button variant="ghost" size="icon" className="h-8 w-8 relative">
               <Bell className="h-4 w-4 text-slate-600" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
             </Button>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-200 cursor-pointer">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center cursor-pointer">
               <span className="text-white text-sm font-bold">S</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced "Questions" Tag */}
-      <Card className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] border-0 shadow-xl hover:shadow-2xl transition-all duration-300 mx-4 mt-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:scale-110 transition-transform duration-200">
-              <FileText className="h-5 w-5 text-white" />
+      {/* Questions Tag - Fixed width to match other cards */}
+      <div className="max-w-md mx-auto p-4 pt-4">
+        <Card className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] border-0 shadow-xl">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-white" />
+              </div>
+              <CardTitle className="text-xl font-bold text-white">Questions</CardTitle>
+              <div className="ml-auto text-white/80 text-sm font-medium">
+                {currentQuestionIndex + 1}/{allQuestions.length}
+              </div>
             </div>
-            <CardTitle className="text-xl font-bold text-white">Questions</CardTitle>
-            <div className="ml-auto text-white/80 text-sm font-medium">
-              {currentQuestionIndex + 1}/{allQuestions.length}
-            </div>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
+      </div>
 
-      {/* Enhanced Chat Content */}
+      {/* Chat Content */}
       <div className="max-w-md mx-auto p-4 pt-2 pb-32 space-y-6">
         {messages.map((message, idx) => (
           <div
             key={message.id}
-            className="space-y-4 animate-fade-in hover:scale-[1.01] transition-transform duration-200"
+            className="space-y-4 animate-fade-in"
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
             {message.type === 'question' && (
-              <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 border-l-4 border-[#3F2768]">
+              <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl border-l-4 border-[#3F2768]">
                 <CardContent className="p-5">
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-200"
+                        className="w-6 h-6 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: '#3F2768' }}
                       >
                         <span className="text-white text-xs font-bold">Q</span>
@@ -354,7 +385,7 @@ const Chat = () => {
                     </p>
                   </div>
                   {(message as QuestionMessage).subQuestions.map((sub, i) => (
-                    <div key={i} className="pl-4 mb-2 hover:bg-purple-50 rounded-lg p-2 transition-colors duration-200">
+                    <div key={i} className="pl-4 mb-2 p-2">
                       <span className="font-medium text-slate-700">{sub}</span>
                     </div>
                   ))}
@@ -365,10 +396,10 @@ const Chat = () => {
             {message.type === 'answer' && (
               <div className="flex justify-end animate-slide-in-right">
                 <div className="max-w-xs">
-                  <div className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] text-white p-4 rounded-2xl rounded-br-md shadow-xl hover:shadow-2xl transition-all duration-300 whitespace-pre-line">
+                  <div className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] text-white p-4 rounded-2xl rounded-br-md shadow-xl whitespace-pre-line">
                     <p className="text-sm leading-relaxed font-medium">{message.content}</p>
                     {message.image && (
-                      <div className="mt-3 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+                      <div className="mt-3 rounded-lg overflow-hidden">
                         <img src={message.image} alt="Uploaded answer" className="w-full h-auto" />
                       </div>
                     )}
@@ -380,9 +411,9 @@ const Chat = () => {
 
             {message.type === 'analyzing' && (
               <div className="flex justify-center">
-                <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-4 rounded-2xl shadow-lg border-amber-200 border flex items-center gap-3 hover:scale-105 transition-transform duration-200">
+                <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-4 rounded-2xl shadow-lg border-amber-200 border flex items-center gap-3">
                   <Loader2 className="h-5 w-5 text-amber-600 animate-spin" />
-                  <Bot className="h-5 w-5 text-amber-600 animate-bounce" />
+                  <Bot className="h-5 w-5 text-amber-600" />
                   <p className="text-amber-800 font-medium">{message.content}</p>
                 </div>
               </div>
@@ -390,11 +421,11 @@ const Chat = () => {
 
             {message.type === 'feedback' && (
               <>
-                <Card className="bg-gradient-to-br from-[#F0EDF7] to-[#E8E4F2] border-[#B0A6C9] shadow-xl hover:shadow-2xl transition-all duration-300">
+                <Card className="bg-gradient-to-br from-[#F0EDF7] to-[#E8E4F2] border-[#B0A6C9] shadow-xl">
                   <CardContent className="p-5">
-                    {/* Enhanced Header with Feedback icon */}
+                    {/* Header with Feedback icon */}
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 bg-[#3F2768] rounded-full flex items-center justify-center animate-bounce hover:scale-110 transition-transform duration-200">
+                      <div className="w-8 h-8 bg-[#3F2768] rounded-full flex items-center justify-center">
                         <CheckCircle className="h-5 w-5 text-white" />
                       </div>
                       <h4 className="font-bold text-[#3F2768] text-lg">Feedback</h4>
@@ -409,19 +440,19 @@ const Chat = () => {
                               .join('\n\n')
                           )
                         }
-                        className="cursor-pointer text-[#3F2768] hover:text-[#322058] transition-all duration-200 hover:scale-125 transform text-lg"
+                        className="cursor-pointer text-[#3F2768] transition-all duration-200 text-lg"
                         title="Copy all feedback"
                       >
                         {copyFeedback}
                       </span>
                     </div>
 
-                    {/* Enhanced sub-feedback blocks */}
+                    {/* sub-feedback blocks */}
                     <div className="space-y-4 mb-3">
                       {message.subFeedbacks.map((fb, fbIdx) => (
                         <div
                           key={fb.questionNumber}
-                          className="bg-white/70 rounded-lg p-3 border-l-4 border-[#3F2768] shadow-inner hover:bg-white/90 transition-all duration-200 hover:scale-[1.02]"
+                          className="bg-white/70 rounded-lg p-3 border-l-4 border-[#3F2768] shadow-inner"
                           style={{ animationDelay: `${fbIdx * 0.1}s` }}
                         >
                           <p className="text-[#3F2768] text-sm font-semibold">Question {fb.questionNumber}</p>
@@ -449,10 +480,10 @@ const Chat = () => {
                       ))}
                     </div>
 
-                    {/* Enhanced toggle for improvement tips */}
+                    {/* toggle for improvement tips */}
                     <button
                       onClick={() => setShowImprovements((prev) => !prev)}
-                      className="mb-2 text-xs text-[#3F2768] hover:underline transition-all duration-200 hover:scale-105 font-semibold"
+                      className="mb-2 text-xs text-[#3F2768] font-semibold"
                     >
                       {showImprovements ? (
                         <span className="flex items-center gap-1">
@@ -465,14 +496,14 @@ const Chat = () => {
                       )}
                     </button>
 
-                    {/* Enhanced improvement tips section */}
+                    {/* improvement tips section */}
                     <div
                       className={`p-3 bg-[#F5F3FA] rounded-lg border-l-4 border-[#B0A6C9] overflow-hidden transition-all duration-500 whitespace-pre-line ${
-                        showImprovements ? 'max-h-screen opacity-100 scale-100' : 'max-h-0 opacity-0 scale-95'
+                        showImprovements ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
                       }`}
                     >
                       <div className="flex items-start gap-2">
-                        <Lightbulb className="h-6 w-6 text-[#3F2768] mt-0.5 animate-pulse" />
+                        <Lightbulb className="h-6 w-6 text-[#3F2768] mt-0.5" />
                         <div>
                           <h5 className="font-bold text-[#3F2768] text-sm mb-1">Improvement Tips:</h5>
                           <p className="text-[#5A4E75] text-sm font-medium">{message.combinedImprovements}</p>
@@ -484,9 +515,9 @@ const Chat = () => {
                   </CardContent>
                 </Card>
 
-                {/* Enhanced Summary */}
-                <div className="max-w-md mx-auto mt-2 p-4 bg-gradient-to-r from-white/95 to-purple-50/95 backdrop-blur-sm rounded-lg border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p className="text-[#3F2768] font-bold whitespace-pre-line text-center animate-fade-in">
+                {/* Summary */}
+                <div className="max-w-md mx-auto mt-2 p-4 bg-gradient-to-r from-white/95 to-purple-50/95 backdrop-blur-sm rounded-lg border border-slate-200 shadow-lg">
+                  <p className="text-[#3F2768] font-bold whitespace-pre-line text-center">
                     🎯 Total Marks Awarded: {message.totalAwarded}/{message.totalAllocated}
                     {'\n'}✅ Completeness Status: Completed
                   </p>
@@ -496,41 +527,34 @@ const Chat = () => {
           </div>
         ))}
 
-        {/* Enhanced Next Button */}
-        {messages.some((m) => m.type === 'feedback') && (
-          <div className="flex justify-center animate-bounce">
+        {/* Next Button - Only show after feedback summary is complete */}
+        {shouldShowNextButton() && (
+          <div className="flex justify-center">
             <Button
               onClick={handleNextQuestion}
-              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] hover:from-[#322058] hover:to-[#3A2066] text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 transform"
+              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] text-white shadow-xl"
             >
               <span className="mr-2">Next Question</span>
-              <ArrowRight className="h-4 w-4 animate-pulse" />
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         )}
       </div>
 
-      {/* Enhanced Input Area */}
+      {/* Input Area */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-lg">
         <div className="max-w-md mx-auto space-y-3">
           {selectedImage && (
-            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 shadow-lg animate-scale-in">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 shadow-lg">
               <div className="flex items-center gap-3 mb-2">
-                <Camera className="h-4 w-4 text-blue-600 animate-bounce" />
+                <Camera className="h-4 w-4 text-blue-600" />
                 <span className="text-sm font-medium text-blue-800">📸 Image selected and ready!</span>
               </div>
               <img 
                 src={selectedImage} 
                 alt="Selected answer" 
-                className="w-full h-32 object-cover rounded-lg hover:scale-105 transition-transform duration-200 cursor-pointer"
-                onMouseEnter={() => setIsImageHovered(true)}
-                onMouseLeave={() => setIsImageHovered(false)}
+                className="w-full h-32 object-cover rounded-lg cursor-pointer"
               />
-              {isImageHovered && (
-                <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-semibold">Preview</span>
-                </div>
-              )}
             </div>
           )}
           {!selectedImage && (
@@ -554,13 +578,12 @@ const Chat = () => {
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:scale-125 transition-all duration-300 relative overflow-hidden"
+              className="h-10 w-10 border-slate-200"
               asChild
               disabled={isSubmitting}
             >
               <label htmlFor="image-upload" className="cursor-pointer">
-                <Camera className="h-4 w-4 text-slate-600 hover:text-blue-600 transition-colors duration-200" />
-                <div className="absolute inset-0 bg-blue-500/10 scale-0 hover:scale-100 transition-transform duration-300 rounded-full" />
+                <Camera className="h-4 w-4 text-slate-600" />
               </label>
             </Button>
 
@@ -568,7 +591,7 @@ const Chat = () => {
 
             <Button
               onClick={handleSendAnswer}
-              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] hover:from-[#322058] hover:to-[#3A2066] shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-white hover:scale-110 transform relative overflow-hidden"
+              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] shadow-xl font-semibold text-white"
               disabled={!selectedImage || isSubmitting}
             >
               {isSubmitting ? (
@@ -582,7 +605,6 @@ const Chat = () => {
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
-              <div className="absolute inset-0 bg-white/10 scale-0 hover:scale-100 transition-transform duration-300" />
             </Button>
           </div>
         </div>
@@ -592,3 +614,4 @@ const Chat = () => {
 };
 
 export default Chat;
+
