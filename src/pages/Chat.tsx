@@ -1,11 +1,17 @@
-
-import { useState } from 'react';
-import { ArrowRight, Bell, Camera, CheckCircle, FileText, Target, Lightbulb, Bot, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+  ArrowRight,
+  Bell,
+  Camera,
+  CheckCircle,
+  FileText,
+  Loader2,
+  Bot,
+  Lightbulb,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar } from '@/components/ui/avatar';
 
 interface BaseMessage {
   id: number;
@@ -16,9 +22,9 @@ interface BaseMessage {
 
 interface QuestionMessage extends BaseMessage {
   type: 'question';
-  options?: string[];
   marks: number;
   questionNumber: string;
+  subQuestions: string[];
 }
 
 interface AnswerMessage extends BaseMessage {
@@ -26,11 +32,20 @@ interface AnswerMessage extends BaseMessage {
   image?: string;
 }
 
+interface SubFeedback {
+  questionNumber: number;
+  allocated: number;
+  awarded: number;
+  studentAnswer: string;
+  feedbackText: string;
+}
+
 interface FeedbackMessage extends BaseMessage {
   type: 'feedback';
-  marks: { allocated: number; awarded: number };
-  improvement?: string;
-  questionNumber: string;
+  subFeedbacks: SubFeedback[];
+  combinedImprovements: string;
+  totalAllocated: number;
+  totalAwarded: number;
 }
 
 interface AnalyzingMessage extends BaseMessage {
@@ -39,341 +54,493 @@ interface AnalyzingMessage extends BaseMessage {
 
 type Message = QuestionMessage | AnswerMessage | FeedbackMessage | AnalyzingMessage;
 
+const allQuestions: Omit<QuestionMessage, 'id' | 'type' | 'timestamp'>[] = [
+  {
+    questionNumber: '1',
+    marks: 10,
+    subQuestions: [
+      '(i) Complete the sentence by choosing an appropriate option: Avalanche can be caused by\n• a. new snow or rain\n• b. heavy winds\n• c. high altitude\n• d. global warming',
+      '(ii) Comment on warning signs which allow experts to predict avalanches in two sentences.',
+      '(iii) Mention two reasons which destroyed the natural scenery.',
+      '(iv) Select the option that conveys the opposite of "massive":\n• a. tiny\n• b. lengthy\n• c. bulky\n• d. extensive',
+      '(v) The writer will agree with one of the given statements (paragraph 4):\n• a. People caught in an avalanche can try to swim to the top.\n• b. Put on an oxygen mask.\n• c. Digging is not possible.\n• d. Should not come close to the surface.',
+      '(vi) Select the option that corresponds to the following relation: "Snow : Avalanche :: Water : ___"\n• a. Flood\n• b. Drought\n• c. Tsunami\n• d. Waterfall',
+    ],
+    content: `📖 Section A — Question 1  
+✏️ Type: Reading Comprehension  
+🎯 Marks: 10  
+
+Instruction: Read the following passage carefully:  
+
+📚 Passage:  
+(1) If you're like most kids, you may love snow. Not only can it get you out of school, but it's also fun to play with. Who doesn't love to sled and build snowmen? Snow can also be dangerous, too. You may have heard your parents talk about how difficult it can be to drive in snow. Car accidents aren't the only dangers created by snow. If you're ever skiing in the mountains, you'll want to be aware of avalanches. An avalanche is a sudden flow of snow down a slope, such as a mountain. The amount of snow in an avalanche will vary based on many things, but it can be such a huge pile that it can bury the bottom of a slope in dozens of feet of snow.  
+
+(2) Avalanches can be caused by many things. Some of them are natural. For example, new snow or rain can cause built-up snow to loosen and fall down the side of a mountain. Earthquakes and the movement of animals have also been known to cause avalanches. Artificial triggers can also cause avalanches. For instance, skiers and snowboarders can sometimes accidentally cause an avalanche when they break through a weak layer of snow.  
+
+Below are sub-questions (i)–(vi) based on this passage:`,
+  },
+  {
+    questionNumber: '2',
+    marks: 8,
+    subQuestions: [
+      '(i) According to paragraph (1), what three attributes are essential for a young person to pursue a successful tech career?',
+      '(ii) In your own words, summarize how high school students can begin building a coding portfolio (paragraph 2).',
+      '(iii) Identify two benefits of internships mentioned in paragraph (3).',
+      '(iv) Explain why "mentors and peers" are considered crucial in paragraph (2), based on the text.',
+    ],
+    content: `📖 Section A — Question 2  
+✏️ Type: Reading Comprehension  
+🎯 Marks: 8  
+
+Instruction: Read the following passage carefully:  
+
+📚 Passage:  
+(1) Many young people dream of a career in technology. They imagine coding apps that solve problems, designing robots to do household chores, or pioneering new breakthroughs in artificial intelligence. But the journey to a tech career requires more than just imagination. It takes discipline, a willingness to learn from failure, and a team that can support you when things get tough.  
+
+(2) In high school, students might begin by taking introductory classes in computer science, learning the basics of algorithms, data structures, problem-solving. As their skills grow, they can work on personal coding projects—perhaps a small game or a simple web application—to build a portfolio. Mentors and peers help provide feedback, debugging tips, and moral support, reminding students that even the best programmers started with errors.  
+
+(3) Once in college, the focus often shifts to more specialized areas—cybersecurity, machine learning, or human-computer interaction. Internships during summer breaks offer real-world experience: writing production-level code, collaborating with engineers, and participating in code reviews. Those internships can lead to full-time offers if the student demonstrates creativity, critical thinking, and a strong work ethic.  
+
+Below are sub-questions (i)–(iv) based on this passage:`,
+  },
+];
+
 const Chat = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showImprovements, setShowImprovements] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState('📋');
+  const [isImageHovered, setIsImageHovered] = useState(false);
+  const [currentProgress, setCurrentProgress] = useState(0);
+
+  useEffect(() => {
+    const first = allQuestions[0];
+    const questionMessage: QuestionMessage = {
       id: 1,
       type: 'question',
-      content: 'Complete the sentence by choosing an appropriate option: Avalanche can be caused by',
-      options: ['a. new snow or rain', 'b. heavy winds', 'c. high altitude', 'd. global warming'],
-      timestamp: '2:55 PM',
-      marks: 1,
-      questionNumber: '1'
-    }
-  ]);
-  
-  const [currentAnswer, setCurrentAnswer] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(1);
-  const [showNextButton, setShowNextButton] = useState(false);
+      content: first.content,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      marks: first.marks,
+      questionNumber: first.questionNumber,
+      subQuestions: first.subQuestions,
+    };
+    setMessages([questionMessage]);
+  }, []);
 
-  const dummyQuestions = [
-    {
-      content: 'Solve the following equation: 3x + 7 = 22. Find the value of x.',
-      marks: 2,
-      type: 'open'
-    },
-    {
-      content: 'In triangle ABC, if angle A = 60°, angle B = 45°, what is angle C? Show your working.',
-      marks: 3,
-      type: 'open'
-    },
-    {
-      content: 'Convert the following to Roman numerals:\n(i) 47\n(ii) 129\n(iii) 256',
-      marks: 3,
-      type: 'open'
-    },
-    {
-      content: 'Choose the correct answer: What is the derivative of f(x) = 3x² + 2x - 1?',
-      options: ['a. 6x + 2', 'b. 3x + 2', 'c. 6x - 1', 'd. 3x² + 2'],
-      marks: 1,
-      type: 'mcq'
-    },
-    {
-      content: 'A rectangle has length 12 cm and width 8 cm. Calculate:\n(i) Its perimeter\n(ii) Its area\n(iii) The length of its diagonal',
-      marks: 4,
-      type: 'open'
-    },
-    {
-      content: 'Factorize completely: x² - 9x + 20',
-      marks: 2,
-      type: 'open'
-    }
-  ];
-
-  const handleSendAnswer = () => {
-    if (currentAnswer.trim() || selectedImage) {
-      const newMessage: AnswerMessage = {
-        id: messages.length + 1,
-        type: 'answer',
-        content: currentAnswer || 'Image uploaded',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        image: selectedImage || undefined
-      };
-      setMessages([...messages, newMessage]);
-      setCurrentAnswer('');
-      setSelectedImage(null);
-      
-      // Show analyzing message for images
-      if (selectedImage) {
-        setTimeout(() => {
-          const analyzingMessage: AnalyzingMessage = {
-            id: messages.length + 2,
-            type: 'analyzing',
-            content: 'AI is analyzing your handwritten answer...',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          };
-          setMessages(prev => [...prev, analyzingMessage]);
-        }, 500);
-      }
-      
-      // Simulate feedback after delay
-      setTimeout(() => {
-        if (selectedImage) {
-          setMessages(prev => prev.filter(msg => msg.type !== 'analyzing'));
-        }
-        
-        const feedbackMessage: FeedbackMessage = {
-          id: messages.length + 3,
-          type: 'feedback',
-          content: selectedImage 
-            ? 'Your handwritten solution shows good mathematical reasoning and clear working steps.'
-            : 'Your answer demonstrates good understanding of the mathematical concepts.',
-          marks: { allocated: currentQuestionIndex <= 2 ? 1 : 2, awarded: currentQuestionIndex <= 2 ? 1 : 2 },
-          improvement: selectedImage 
-            ? 'Excellent work! Your handwriting is clear and your mathematical notation is correct.'
-            : 'Well done! Consider showing more detailed steps in your working.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          questionNumber: currentQuestionIndex.toString()
-        };
-        setMessages(prev => [...prev, feedbackMessage]);
-        setShowNextButton(true);
-      }, selectedImage ? 3000 : 2000);
-    }
-  };
-
-  const handleNextQuestion = () => {
-    setShowNextButton(false);
-    
-    if (currentQuestionIndex - 1 < dummyQuestions.length) {
-      const nextQuestion = dummyQuestions[currentQuestionIndex - 1];
-      const questionMessage: QuestionMessage = {
-        id: messages.length + 1,
-        type: 'question',
-        content: nextQuestion.content,
-        options: nextQuestion.options,
-        marks: nextQuestion.marks,
-        questionNumber: (currentQuestionIndex + 1).toString(),
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages(prev => [...prev, questionMessage]);
-      setCurrentQuestionIndex(prev => prev + 1);
-    }
-  };
+  useEffect(() => {
+    const totalQuestions = allQuestions.length;
+    const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
+    setCurrentProgress(progress);
+  }, [currentQuestionIndex]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setSelectedImage(imageUrl);
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target?.result as string;
+      setSelectedImage(imageUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSendAnswer = () => {
+    if (isSubmitting) return;
+    if (!selectedImage) return;
+
+    setIsSubmitting(true);
+    const studentAnswerImage = selectedImage;
+
+    const answerMessage: AnswerMessage = {
+      id: messages.length + 1,
+      type: 'answer',
+      content: 'Image uploaded',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      image: studentAnswerImage!,
+    };
+    setMessages((prev) => [...prev, answerMessage]);
+    setSelectedImage(null);
+
+    const analyzingMsg: AnalyzingMessage = {
+      id: messages.length + 2,
+      type: 'analyzing',
+      content: 'AI is analyzing your handwritten answers…',
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setTimeout(() => {
+      setMessages((prev) => [...prev, analyzingMsg]);
+    }, 300);
+
+    setTimeout(() => {
+      setMessages((prev) => prev.filter((m) => m.type !== 'analyzing'));
+
+      const currentQ = allQuestions[currentQuestionIndex];
+      const subCount = currentQ.subQuestions.length;
+      const totalMarks = currentQ.marks;
+
+      const base = Math.floor(totalMarks / subCount);
+      const remainder = totalMarks % subCount;
+      const marksDistribution: number[] = [];
+      for (let i = 0; i < subCount; i++) {
+        marksDistribution.push(i < remainder ? base + 1 : base);
+      }
+
+      const dummyAnswers = [
+        'A thin layer of fresh snow resting on an older, unstable base.',
+        'Hearing cracks and seeing snow melt can signal instability.',
+        'Construction and deforestation removed natural barriers.',
+        'tiny (direct opposite of massive).',
+        '"People caught in an avalanche can try to swim to the top." is correct.',
+        'Flood mimics the sudden surge, matching the analogy best.',
+      ];
+      const variedFeedbacks = [
+        'Excellent choice—new snow or rain indeed disrupts the existing snowpack and can trigger an avalanche.',
+        'Well noted. Describing sounds like cracking accurately indicates a weakening snow structure.',
+        'Good insight. You recognized how removal of trees and road construction destroyed natural scenery.',
+        'Correct antonym. "tiny" effectively conveys the opposite of "massive."',
+        'Perfect interpretation. That statement does reflect the author's advice for survival.',
+        'Spot on. Flood captures the rapid and forceful movement similar to how water relates to tsunami or drought.',
+      ];
+
+      const subFeedbacks: SubFeedback[] = [];
+      const improvementLines: string[] = [
+        'Tip for Q1: Double-check the broader passage context before finalizing your choice.',
+        'Tip for Q2: Add a sentence on how someone might respond once they notice these signs.',
+        'Tip for Q3: Include real examples like highways or ski resorts that altered scenery.',
+        'Tip for Q4: Verify synonyms in a dictionary to ensure precise antonym usage.',
+        'Tip for Q5: Reference the exact line where this advice appears for stronger support.',
+        'Tip for Q6: Discuss why "drought" or "tsunami" would not fit the analogy as well as "flood."',
+      ];
+      let cumulativeAwarded = 0;
+
+      currentQ.subQuestions.forEach((subQ, idx) => {
+        const allocated = marksDistribution[idx];
+        const awarded = allocated;
+        cumulativeAwarded += awarded;
+        subFeedbacks.push({
+          questionNumber: idx + 1,
+          allocated,
+          awarded,
+          studentAnswer: dummyAnswers[idx],
+          feedbackText: `<strong>${variedFeedbacks[idx]}</strong>`,
+        });
+      });
+
+      const combinedImprovements = improvementLines.join('\n\n');
+
+      const combinedFeedback: FeedbackMessage = {
+        id: messages.length + 3,
+        type: 'feedback',
+        subFeedbacks,
+        combinedImprovements,
+        totalAllocated: totalMarks,
+        totalAwarded: cumulativeAwarded,
+        content: '',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      reader.readAsDataURL(file);
+
+      setMessages((prev) => [...prev, combinedFeedback]);
+      setIsSubmitting(false);
+    }, 2000);
+  };
+
+  const handleNextQuestion = () => {
+    const nextIndex = currentQuestionIndex + 1;
+    if (nextIndex >= allQuestions.length) {
+      alert('🎉 Congratulations! You have completed all questions!');
+      return;
     }
+
+    setSelectedImage(null);
+    setShowImprovements(false);
+    const nextQ = allQuestions[nextIndex];
+    const questionMessage: QuestionMessage = {
+      id: messages.length + 1,
+      type: 'question',
+      content: nextQ.content,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      marks: nextQ.marks,
+      questionNumber: nextQ.questionNumber,
+      subQuestions: nextQ.subQuestions,
+    };
+    setMessages((prev) => [...prev, questionMessage]);
+    setCurrentQuestionIndex(nextIndex);
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopyFeedback('✅');
+    setTimeout(() => setCopyFeedback('📋'), 2000);
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 font-inter">
-      {/* Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200 px-4 py-3 sticky top-0 z-10">
+      {/* Enhanced Header */}
+      <div className="bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center justify-between max-w-md mx-auto">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100 hover:scale-110 transition-all duration-200">
               <ArrowRight className="h-4 w-4 rotate-180 text-blue-600" />
             </Button>
             <div className="text-center">
-              <h1 className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                2024 Set 2
-              </h1>
+              <h1 className="text-lg font-bold text-[#3F2768] animate-pulse">2024 Set 2</h1>
               <p className="text-sm text-slate-600 font-medium">Math Test</p>
+              {/* Progress Bar */}
+              <div className="w-20 h-1 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#3F2768] to-blue-500 transition-all duration-500 ease-out"
+                  style={{ width: `${currentProgress}%` }}
+                />
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-100 hover:scale-110 transition-all duration-200 relative">
               <Bell className="h-4 w-4 text-slate-600" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
             </Button>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-200 cursor-pointer">
               <span className="text-white text-sm font-bold">S</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Chat Content */}
-      <div className="max-w-md mx-auto p-4 pb-32">
-        <div className="space-y-6">
-          {/* Question Header Card */}
-          <Card className="bg-gradient-to-r from-blue-500 to-purple-600 border-0 shadow-lg animate-fade-in">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-white" />
-                </div>
-                <CardTitle className="text-xl font-bold text-white">Questions</CardTitle>
-              </div>
-            </CardHeader>
-          </Card>
+      {/* Enhanced "Questions" Tag */}
+      <Card className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] border-0 shadow-xl hover:shadow-2xl transition-all duration-300 mx-4 mt-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:scale-110 transition-transform duration-200">
+              <FileText className="h-5 w-5 text-white" />
+            </div>
+            <CardTitle className="text-xl font-bold text-white">Questions</CardTitle>
+            <div className="ml-auto text-white/80 text-sm font-medium">
+              {currentQuestionIndex + 1}/{allQuestions.length}
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
-          {/* Messages */}
-          {messages.map((message, index) => (
-            <div key={message.id} className="space-y-4 animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-              {message.type === 'question' && (
-                <Card className="bg-white/90 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover-scale" style={{ borderLeft: '4px solid #3F2768' }}>
-                  <CardContent className="p-5">
-                    <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#3F2768' }}>
-                          <span className="text-white text-xs font-bold">Q</span>
-                        </div>
-                        <span className="font-bold" style={{ color: '#3F2768' }}>
-                          ({(message as QuestionMessage).questionNumber}) ({(message as QuestionMessage).marks} mark{(message as QuestionMessage).marks > 1 ? 's' : ''})
-                        </span>
+      {/* Enhanced Chat Content */}
+      <div className="max-w-md mx-auto p-4 pt-2 pb-32 space-y-6">
+        {messages.map((message, idx) => (
+          <div
+            key={message.id}
+            className="space-y-4 animate-fade-in hover:scale-[1.01] transition-transform duration-200"
+            style={{ animationDelay: `${idx * 0.1}s` }}
+          >
+            {message.type === 'question' && (
+              <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-xl hover:shadow-2xl transition-all duration-300 border-l-4 border-[#3F2768]">
+                <CardContent className="p-5">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-6 h-6 rounded-full flex items-center justify-center hover:scale-110 transition-transform duration-200"
+                        style={{ backgroundColor: '#3F2768' }}
+                      >
+                        <span className="text-white text-xs font-bold">Q</span>
                       </div>
-                      <p className="text-slate-800 leading-relaxed font-medium whitespace-pre-line">{message.content}</p>
+                      <span className="font-bold" style={{ color: '#3F2768' }}>
+                        ({(message as QuestionMessage).questionNumber}) (
+                        {(message as QuestionMessage).marks} Mark
+                        {(message as QuestionMessage).marks > 1 ? 's' : ''})
+                      </span>
                     </div>
-                    
-                    {(message as QuestionMessage).options && (
-                      <div className="space-y-3">
-                        {(message as QuestionMessage).options!.map((option, optIndex) => (
-                          <div key={optIndex} className="flex items-start gap-3 p-2 rounded-lg hover:bg-purple-50 transition-colors">
-                            <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0" style={{ backgroundColor: '#3F2768' }}></div>
-                            <span className="text-slate-700 font-medium">{option}</span>
-                          </div>
-                        ))}
+                    <p className="text-slate-800 leading-relaxed font-medium whitespace-pre-line">
+                      {(message as QuestionMessage).content}
+                    </p>
+                  </div>
+                  {(message as QuestionMessage).subQuestions.map((sub, i) => (
+                    <div key={i} className="pl-4 mb-2 hover:bg-purple-50 rounded-lg p-2 transition-colors duration-200">
+                      <span className="font-medium text-slate-700">{sub}</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {message.type === 'answer' && (
+              <div className="flex justify-end animate-slide-in-right">
+                <div className="max-w-xs">
+                  <div className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] text-white p-4 rounded-2xl rounded-br-md shadow-xl hover:shadow-2xl transition-all duration-300 whitespace-pre-line">
+                    <p className="text-sm leading-relaxed font-medium">{message.content}</p>
+                    {message.image && (
+                      <div className="mt-3 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+                        <img src={message.image} alt="Uploaded answer" className="w-full h-auto" />
                       </div>
                     )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2 text-right">{message.timestamp}</p>
+                </div>
+              </div>
+            )}
+
+            {message.type === 'analyzing' && (
+              <div className="flex justify-center">
+                <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-4 rounded-2xl shadow-lg border-amber-200 border flex items-center gap-3 hover:scale-105 transition-transform duration-200">
+                  <Loader2 className="h-5 w-5 text-amber-600 animate-spin" />
+                  <Bot className="h-5 w-5 text-amber-600 animate-bounce" />
+                  <p className="text-amber-800 font-medium">{message.content}</p>
+                </div>
+              </div>
+            )}
+
+            {message.type === 'feedback' && (
+              <>
+                <Card className="bg-gradient-to-br from-[#F0EDF7] to-[#E8E4F2] border-[#B0A6C9] shadow-xl hover:shadow-2xl transition-all duration-300">
+                  <CardContent className="p-5">
+                    {/* Enhanced Header with Feedback icon */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 bg-[#3F2768] rounded-full flex items-center justify-center animate-bounce hover:scale-110 transition-transform duration-200">
+                        <CheckCircle className="h-5 w-5 text-white" />
+                      </div>
+                      <h4 className="font-bold text-[#3F2768] text-lg">Feedback</h4>
+                      <span
+                        onClick={() =>
+                          copyToClipboard(
+                            message.subFeedbacks
+                              .map(
+                                (f) =>
+                                  `Question ${f.questionNumber}\nMarks Awarded: ${f.awarded}\nMarks Allocated: ${f.allocated}\nStudent Answer: ${f.studentAnswer}\nFeedback: ${f.feedbackText.replace(/<[^>]+>/g, '')}`
+                              )
+                              .join('\n\n')
+                          )
+                        }
+                        className="cursor-pointer text-[#3F2768] hover:text-[#322058] transition-all duration-200 hover:scale-125 transform text-lg"
+                        title="Copy all feedback"
+                      >
+                        {copyFeedback}
+                      </span>
+                    </div>
+
+                    {/* Enhanced sub-feedback blocks */}
+                    <div className="space-y-4 mb-3">
+                      {message.subFeedbacks.map((fb, fbIdx) => (
+                        <div
+                          key={fb.questionNumber}
+                          className="bg-white/70 rounded-lg p-3 border-l-4 border-[#3F2768] shadow-inner hover:bg-white/90 transition-all duration-200 hover:scale-[1.02]"
+                          style={{ animationDelay: `${fbIdx * 0.1}s` }}
+                        >
+                          <p className="text-[#3F2768] text-sm font-semibold">Question {fb.questionNumber}</p>
+                          <div className="flex justify-between mt-1">
+                            <span>
+                              <span className="text-[#3F2768] text-xs font-bold">Marks Awarded:</span>{' '}
+                              <span className={`text-xs font-semibold ${fb.awarded === fb.allocated ? 'text-[#28A745]' : 'text-[#D0342C]'}`}>
+                                {fb.awarded}
+                              </span>
+                            </span>
+                            <span>
+                              <span className="text-[#28A745] text-xs font-bold">Marks Allocated:</span>{' '}
+                              <span className="text-[#3F2768] text-xs">{fb.allocated}</span>
+                            </span>
+                          </div>
+                          <div className="mt-2">
+                            <span className="text-[#3F2768] text-sm font-bold">Student Answer:</span>{' '}
+                            <span className="text-[#3F2768] text-sm">{fb.studentAnswer}</span>
+                          </div>
+                          <div className="mt-2">
+                            <span className="text-[#3F2768] text-sm font-bold">Feedback:</span>{' '}
+                            <span className="text-[#3F2768] text-sm" dangerouslySetInnerHTML={{ __html: fb.feedbackText }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Enhanced toggle for improvement tips */}
+                    <button
+                      onClick={() => setShowImprovements((prev) => !prev)}
+                      className="mb-2 text-xs text-[#3F2768] hover:underline transition-all duration-200 hover:scale-105 font-semibold"
+                    >
+                      {showImprovements ? (
+                        <span className="flex items-center gap-1">
+                          <span>Hide Tips</span> ⬆️
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <span>Show Tips</span> ⬇️
+                        </span>
+                      )}
+                    </button>
+
+                    {/* Enhanced improvement tips section */}
+                    <div
+                      className={`p-3 bg-[#F5F3FA] rounded-lg border-l-4 border-[#B0A6C9] overflow-hidden transition-all duration-500 whitespace-pre-line ${
+                        showImprovements ? 'max-h-screen opacity-100 scale-100' : 'max-h-0 opacity-0 scale-95'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <Lightbulb className="h-6 w-6 text-[#3F2768] mt-0.5 animate-pulse" />
+                        <div>
+                          <h5 className="font-bold text-[#3F2768] text-sm mb-1">Improvement Tips:</h5>
+                          <p className="text-[#5A4E75] text-sm font-medium">{message.combinedImprovements}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-[#3F2768] mt-3 text-right font-medium">{message.timestamp}</p>
                   </CardContent>
                 </Card>
-              )}
-              
-              {message.type === 'answer' && (
-                <div className="flex justify-end animate-slide-in-right">
-                  <div className="max-w-xs">
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 rounded-2xl rounded-br-md shadow-lg">
-                      <p className="text-sm leading-relaxed font-medium">{message.content}</p>
-                      {(message as AnswerMessage).image && (
-                        <div className="mt-3 rounded-lg overflow-hidden">
-                          <img src={(message as AnswerMessage).image} alt="Uploaded answer" className="w-full h-auto" />
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-2 text-right">{message.timestamp}</p>
-                  </div>
+
+                {/* Enhanced Summary */}
+                <div className="max-w-md mx-auto mt-2 p-4 bg-gradient-to-r from-white/95 to-purple-50/95 backdrop-blur-sm rounded-lg border border-slate-200 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <p className="text-[#3F2768] font-bold whitespace-pre-line text-center animate-fade-in">
+                    🎯 Total Marks Awarded: {message.totalAwarded}/{message.totalAllocated}
+                    {'\n'}✅ Completeness Status: Completed
+                  </p>
                 </div>
-              )}
+              </>
+            )}
+          </div>
+        ))}
 
-              {message.type === 'analyzing' && (
-                <div className="flex justify-center animate-scale-in">
-                  <div className="bg-gradient-to-r from-amber-100 to-orange-100 p-4 rounded-2xl shadow-lg border-amber-200 border">
-                    <div className="flex items-center gap-3">
-                      <Loader2 className="h-5 w-5 text-amber-600 animate-spin" />
-                      <Bot className="h-5 w-5 text-amber-600" />
-                      <p className="text-amber-800 font-medium">{message.content}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {message.type === 'feedback' && (
-                <div className="space-y-4">
-                  <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-lg animate-scale-in">
-                    <CardContent className="p-5">
-                      {/* Question Number and Marks Header */}
-                      <div className="bg-white/60 rounded-lg p-3 mb-4 border-l-4 border-green-400">
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="font-semibold text-slate-700">Question Number:</span>
-                            <span className="ml-2 text-slate-800 font-bold">{(message as FeedbackMessage).questionNumber}</span>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-slate-700">Marks Allocated:</span>
-                            <span className="ml-2 text-slate-800 font-bold">{(message as FeedbackMessage).marks.allocated}</span>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-slate-700">Marks Awarded:</span>
-                            <span className="ml-2 text-green-700 font-bold">{(message as FeedbackMessage).marks.awarded}</span>
-                          </div>
-                          <div>
-                            <span className="font-semibold text-slate-700">Student Answer:</span>
-                            <span className="ml-2 text-slate-800 font-bold">Completed</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3 mb-4">
-                        <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center flex-shrink-0">
-                          <CheckCircle className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-bold text-green-800 mb-1">Feedback:</h4>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="p-3 bg-white/50 rounded-lg border-l-4 border-green-400">
-                          <p className="text-slate-700 text-sm leading-relaxed font-medium">{message.content}</p>
-                        </div>
-                        
-                        {(message as FeedbackMessage).improvement && (
-                          <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border-l-4 border-amber-400">
-                            <div className="flex items-start gap-2">
-                              <Lightbulb className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                              <div>
-                                <h5 className="font-bold text-amber-800 text-sm">Improvement Suggestion:</h5>
-                                <p className="text-amber-700 text-sm mt-1 font-medium">{(message as FeedbackMessage).improvement}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <p className="text-xs text-green-600 mt-3 text-right font-medium">{message.timestamp}</p>
-                    </CardContent>
-                  </Card>
-
-                  {/* Next Question Button */}
-                  {showNextButton && currentQuestionIndex <= dummyQuestions.length && (
-                    <div className="flex justify-center animate-fade-in">
-                      <Button 
-                        onClick={handleNextQuestion}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
-                      >
-                        <span className="mr-2">Next Question</span>
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {/* Enhanced Next Button */}
+        {messages.some((m) => m.type === 'feedback') && (
+          <div className="flex justify-center animate-bounce">
+            <Button
+              onClick={handleNextQuestion}
+              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] hover:from-[#322058] hover:to-[#3A2066] text-white shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-110 transform"
+            >
+              <span className="mr-2">Next Question</span>
+              <ArrowRight className="h-4 w-4 animate-pulse" />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Input Area */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm border-t border-slate-200 p-4">
+      {/* Enhanced Input Area */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-lg">
         <div className="max-w-md mx-auto space-y-3">
           {selectedImage && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-3">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-200 rounded-lg p-3 shadow-lg animate-scale-in">
               <div className="flex items-center gap-3 mb-2">
-                <Camera className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium text-blue-800">Image selected</span>
+                <Camera className="h-4 w-4 text-blue-600 animate-bounce" />
+                <span className="text-sm font-medium text-blue-800">📸 Image selected and ready!</span>
               </div>
-              <img src={selectedImage} alt="Selected answer" className="w-full h-32 object-cover rounded-lg" />
+              <img 
+                src={selectedImage} 
+                alt="Selected answer" 
+                className="w-full h-32 object-cover rounded-lg hover:scale-105 transition-transform duration-200 cursor-pointer"
+                onMouseEnter={() => setIsImageHovered(true)}
+                onMouseLeave={() => setIsImageHovered(false)}
+              />
+              {isImageHovered && (
+                <div className="absolute inset-0 bg-black/20 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-semibold">Preview</span>
+                </div>
+              )}
             </div>
           )}
-          
           {!selectedImage && (
             <Textarea
-              value={currentAnswer}
-              onChange={(e) => setCurrentAnswer(e.target.value)}
-              placeholder="Type your answer here..."
-              className="min-h-[60px] border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none font-medium"
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendAnswer()}
+              value={''}
+              placeholder="📷 Upload an image to get feedback for all sub-questions"
+              className="min-h-[60px] border-slate-200 focus:border-blue-500 focus:ring-blue-500 resize-none font-medium opacity-75"
+              disabled
             />
           )}
-          
+
           <div className="flex items-center gap-3">
             <input
               type="file"
@@ -381,27 +548,40 @@ const Chat = () => {
               onChange={handleImageUpload}
               className="hidden"
               id="image-upload"
+              disabled={isSubmitting}
             />
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-10 w-10 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:scale-110 transition-all duration-200"
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:scale-125 transition-all duration-300 relative overflow-hidden"
               asChild
+              disabled={isSubmitting}
             >
               <label htmlFor="image-upload" className="cursor-pointer">
-                <Camera className="h-4 w-4 text-slate-600" />
+                <Camera className="h-4 w-4 text-slate-600 hover:text-blue-600 transition-colors duration-200" />
+                <div className="absolute inset-0 bg-blue-500/10 scale-0 hover:scale-100 transition-transform duration-300 rounded-full" />
               </label>
             </Button>
-            
+
             <div className="flex-1" />
-            
-            <Button 
+
+            <Button
               onClick={handleSendAnswer}
-              className="h-10 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
-              disabled={!currentAnswer.trim() && !selectedImage}
+              className="bg-gradient-to-r from-[#3F2768] to-[#4A2B7A] hover:from-[#322058] hover:to-[#3A2066] shadow-xl hover:shadow-2xl transition-all duration-300 font-semibold text-white hover:scale-110 transform relative overflow-hidden"
+              disabled={!selectedImage || isSubmitting}
             >
-              <span className="mr-2">Send</span>
-              <ArrowRight className="h-4 w-4" />
+              {isSubmitting ? (
+                <div className="flex items-center">
+                  <Loader2 className="h-4 w-4 animate-spin text-white mr-2" />
+                  <span>Sending...</span>
+                </div>
+              ) : (
+                <>
+                  <span className="mr-2">Send</span>
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+              <div className="absolute inset-0 bg-white/10 scale-0 hover:scale-100 transition-transform duration-300" />
             </Button>
           </div>
         </div>
