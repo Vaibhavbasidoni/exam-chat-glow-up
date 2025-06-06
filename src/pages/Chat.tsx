@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -200,7 +201,7 @@ const Chat = () => {
         'Well noted. Describing sounds like cracking accurately indicates a weakening snow structure.',
         'Good insight. You recognized how removal of trees and road construction destroyed natural scenery.',
         'Correct antonym. "tiny" effectively conveys the opposite of "massive."',
-        'Perfect interpretation. That statement does reflect the author's advice for survival.',
+        'Perfect interpretation. That statement does reflect the author\'s advice for survival.',
         'Spot on. Flood captures the rapid and forceful movement similar to how water relates to tsunami or drought.',
       ];
 
